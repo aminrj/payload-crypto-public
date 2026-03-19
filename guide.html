@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Guide Officiel TRANS3 V3.0</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #333;
+            line-height: 1.6;
+            margin: 0 auto;
+            max-width: 850px;
+            padding: 40px 20px;
+            background-color: #fcfcfc;
+        }
+        .header-box {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 { margin: 0; font-size: 2.2em; text-transform: uppercase; letter-spacing: 1px; }
+        .subtitle { font-size: 1.2em; color: #b3d4ff; margin-top: 10px; }
+        h2 {
+            color: #1e3c72;
+            border-bottom: 2px solid #1e3c72;
+            padding-bottom: 8px;
+            margin-top: 40px;
+        }
+        h3 { color: #d9534f; margin-top: 35px; }
+        p { text-align: justify; }
+        
+        /* Terminal "Screenshot" Styling */
+        .term-window {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            margin: 20px 0;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+        }
+        .term-header {
+            background-color: #323232;
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+        }
+        .term-button {
+            width: 12px; height: 12px; border-radius: 50%; margin-right: 8px;
+        }
+        .btn-close { background-color: #ff5f56; }
+        .btn-min { background-color: #ffbd2e; }
+        .btn-max { background-color: #27c93f; }
+        .term-body {
+            padding: 15px;
+            color: #d4d4d4;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        }
+        
+        /* Terminal Colors based on your bash script */
+        .c-cyan { color: #5bc0de; }
+        .c-green { color: #5cb85c; font-weight: bold; }
+        .c-red { color: #d9534f; font-weight: bold; }
+        .c-yellow { color: #f0ad4e; font-weight: bold; }
+        .c-bold { font-weight: bold; color: #ffffff; }
+        .c-magenta { color: #d066c4; }
+
+        .badge-red { background: #d9534f; color: white; padding: 3px 8px; border-radius: 3px; font-size: 0.9em; }
+        .badge-green { background: #5cb85c; color: white; padding: 3px 8px; border-radius: 3px; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+    <div class="header-box">
+        <h1>TRANS3 SMART ADMIN INTERFACE V3.0</h1>
+        <div class="subtitle">Layer 3 In-Place Payload Encryptor — Guide de Référence Opérationnel</div>
+    </div>
+
+    <h2>1. Menu Principal</h2>
+    <p>Une fois le moteur lancé, voici l'interface de contrôle centralisée qui s'affiche. Elle vous indique l'état de votre interface, le statut du module noyau, et la matrice de routage actuelle.</p>
+    
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body"><span class="c-cyan">╔══════════════════════════════════════════════════════╗
+║         <span class="c-bold">TRANS3 SMART IP ENCRYPTOR V3.0 (L3)</span>          ║
+╠══════════════════════════════════════════════════════╣
+║</span>  Active Interface      : <span class="c-bold">eth0</span> (MTU 1550)
+<span class="c-cyan">║</span>  Kernel Engine         : <span class="c-green">Operational [V]</span>
+<span class="c-cyan">║</span>  Active Target IPs     : <span class="c-yellow">1</span>
+<span class="c-cyan">╠══════════════════════════════════════════════════════╣
+║</span>  <span class="c-bold">ENCRYPTION MATRIX (POSTROUTING/PREROUTING):</span>
+<span class="c-cyan">║</span>  <span class="c-red">[🔒] Encrypting (Out) -></span> <span class="c-bold">192.168.1.50</span> (Mode e)
+<span class="c-cyan">║</span>  <span class="c-green">[🔓] Decrypting (In)  <-</span> <span class="c-bold">192.168.1.50</span> (Mode d)
+<span class="c-cyan">║</span>
+<span class="c-cyan">╠══════════════════════════════════════════════════════╣
+║</span>  <span class="c-bold">1.</span> Initialize kernel engine (Set MTU 1550)
+<span class="c-cyan">║</span>  <span class="c-bold">2.</span> Security Key Management
+<span class="c-cyan">║</span>  <span class="c-bold">3.</span> <span class="c-green">Add an encryption rule (Target IP)</span>
+<span class="c-cyan">║</span>  <span class="c-bold">4.</span> <span class="c-yellow">Real-time Encryption Telemetry</span>
+<span class="c-cyan">║</span>  <span class="c-bold">5.</span> <span class="c-magenta">Lock system configuration (ROM write)</span>
+<span class="c-cyan">║</span>  <span class="c-bold">6.</span> <span class="c-red">Purge matrix (Clear Text Mode)</span>
+<span class="c-cyan">║</span>  <span class="c-bold">7.</span> Exit
+<span class="c-cyan">╚══════════════════════════════════════════════════════╝</span>
+
+ <span class="c-bold">Command (1-7):</span> </div>
+    </div>
+
+    <h2>2. Détail des Commandes</h2>
+    
+    <h3>Option 1 : Initialize kernel engine</h3>
+    <p>Charge le module noyau <code>xt_TRANS3</code> et ajuste le MTU matériel à 1550 pour éviter la fragmentation.</p>
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body"><span class="c-yellow">[*] Analyzing system kernel...</span>
+<span class="c-green">[+] Engine started successfully. MTU adjusted to 1550.</span>
+
+<span class="c-cyan">Press Enter to continue...</span></div>
+    </div>
+
+    <h3>Option 2 : Security Key Management</h3>
+    <p>Vérifie la signature locale ou importe un jeton externe depuis un support amovible.</p>
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body"><span class="c-cyan">┌──────────────────────────────────────────┐
+│               KEY SECURITY               │
+└──────────────────────────────────────────┘</span>
+  a) Check local signature status
+  b) Import external token (Air-Gap USB)
+
+  Choice: a
+
+<span class="c-green">[+] Valid signature found.</span>
+
+<span class="c-cyan">Press Enter to continue...</span></div>
+    </div>
+
+    <h3>Option 3 : Add an encryption rule</h3>
+    <p>Le cœur du système. Renseignez l'IP cible pour établir le tunnel L3.</p>
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body"><span class="c-cyan">┌──────────────────────────────────────────┐
+│         ADD L3 ENCRYPTION RULE           │
+└──────────────────────────────────────────┘</span>
+  Target IP to encrypt: 192.168.1.50
+<span class="c-green">[+] Rules added. Traffic to/from <span class="c-bold">192.168.1.50</span> is now encrypted (Layer 3).</span>
+
+<span class="c-cyan">Press Enter to continue...</span></div>
+    </div>
+
+    <h3>Option 4 : Real-time Encryption Telemetry</h3>
+    <p>Affiche les compteurs exacts de paquets modifiés par le moteur cryptographique.</p>
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body"><span class="c-cyan">╔══════════════════════════════════════════════════════╗
+║              ENCRYPTION TELEMETRY                    ║
+╚══════════════════════════════════════════════════════╝</span>
+
+<span class="c-yellow">[ OUTBOUND FLOWS (ENCRYPTING --mode e) ]</span>
+  <span class="c-red">[TX]</span> To: <span class="c-bold">192.168.1.50</span> | Proto: tcp | Encrypted: <span class="c-cyan">120 pkts</span> (15400)
+
+<span class="c-yellow">[ INBOUND FLOWS (DECRYPTING --mode d) ]</span>
+  <span class="c-green">[RX]</span> From: <span class="c-bold">192.168.1.50</span> | Proto: tcp | Decrypted: <span class="c-cyan">98 pkts</span> (10240)
+
+<span class="c-cyan">Press Enter to continue...</span></div>
+    </div>
+
+    <h3>Option 5 : Lock system configuration</h3>
+    <p>Rend vos règles de chiffrement persistantes après un redémarrage machine.</p>
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body"><span class="c-yellow">[*] Writing to system ROM...</span>
+<span class="c-green">[+] Encryption rules permanently sealed.</span>
+
+<span class="c-cyan">Press Enter to continue...</span></div>
+    </div>
+
+    <h3>Option 6 : Purge matrix</h3>
+    <p>Détruit instantanément toutes les règles et rétablit un réseau standard non chiffré.</p>
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body"><span class="c-red">[*] Purging encryption rules...</span>
+<span class="c-green">[+] Network interface restored to Clear Text Mode (MTU 1500).</span>
+
+<span class="c-cyan">Press Enter to continue...</span></div>
+    </div>
+
+    <h3>Option 7 : Exit</h3>
+    <p>Ferme le menu d'administration avec possibilité de laisser le moteur actif en tâche de fond.</p>
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body">
+<span class="c-yellow">[?] Shutdown sequence:</span>
+  Keep encryption active in background? (Y/n): Y
+<span class="c-green">  > Encryption active in background.</span>
+<span class="c-cyan">  Terminal disconnected.</span></div>
+    </div>
+
+</body>
+</html>

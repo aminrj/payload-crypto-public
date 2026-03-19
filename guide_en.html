@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Official TRANS3 V3.0 Guide</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #333;
+            line-height: 1.6;
+            margin: 0 auto;
+            max-width: 850px;
+            padding: 40px 20px;
+            background-color: #fcfcfc;
+        }
+        .header-box {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 { margin: 0; font-size: 2.2em; text-transform: uppercase; letter-spacing: 1px; }
+        .subtitle { font-size: 1.2em; color: #b3d4ff; margin-top: 10px; }
+        h2 {
+            color: #1e3c72;
+            border-bottom: 2px solid #1e3c72;
+            padding-bottom: 8px;
+            margin-top: 40px;
+        }
+        h3 { color: #d9534f; margin-top: 35px; }
+        p { text-align: justify; }
+        
+        /* Terminal "Screenshot" Styling */
+        .term-window {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            margin: 20px 0;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+        }
+        .term-header {
+            background-color: #323232;
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+        }
+        .term-button {
+            width: 12px; height: 12px; border-radius: 50%; margin-right: 8px;
+        }
+        .btn-close { background-color: #ff5f56; }
+        .btn-min { background-color: #ffbd2e; }
+        .btn-max { background-color: #27c93f; }
+        .term-body {
+            padding: 15px;
+            color: #d4d4d4;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        }
+        
+        /* Terminal Colors */
+        .c-cyan { color: #5bc0de; }
+        .c-green { color: #5cb85c; font-weight: bold; }
+        .c-red { color: #d9534f; font-weight: bold; }
+        .c-yellow { color: #f0ad4e; font-weight: bold; }
+        .c-bold { font-weight: bold; color: #ffffff; }
+        .c-magenta { color: #d066c4; }
+
+        .badge-red { background: #d9534f; color: white; padding: 3px 8px; border-radius: 3px; font-size: 0.9em; }
+        .badge-green { background: #5cb85c; color: white; padding: 3px 8px; border-radius: 3px; font-size: 0.9em; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #1e3c72; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
+</head>
+<body>
+
+    <div class="header-box">
+        <h1>TRANS3 SMART ADMIN INTERFACE V3.0</h1>
+        <div class="subtitle">Layer 3 In-Place Payload Encryptor — Operational Reference Guide</div>
+    </div>
+
+    <h2>1. Technological Overview</h2>
+    <p><strong>TRANS3</strong> is a smart cryptographic engine operating directly at the network layer (Layer 3). Unlike traditional VPN solutions, it encrypts <strong>only the payload</strong> without altering the transport protocol[cite: 8, 9, 18, 19]. A TCP packet remains a TCP packet on the wire; only the actual payload data disappears into the encryption[cite: 19, 20].</p>
+    
+    <table>
+        <tr>
+            <th>Criterion</th>
+            <th>TRANS3 V3.0 (Layer 3)</th>
+            <th>Classic VPN (IPsec / WireGuard)</th>
+        </tr>
+        <tr>
+            <td><strong>Network Protocol</strong></td>
+            <td><span class="badge-green">Unchanged</span> (TCP / UDP / ICMP) [cite: 12]</td>
+            <td>Modified (Encapsulated) [cite: 12]</td>
+        </tr>
+        <tr>
+            <td><strong>Virtual Interface</strong></td>
+            <td><span class="badge-green">None</span> (Transparent) [cite: 12, 21]</td>
+            <td>Required (tun0, wg0) [cite: 12]</td>
+        </tr>
+        <tr>
+            <td><strong>Session / Handshake</strong></td>
+            <td><span class="badge-green">None</span> (0 ms latency) [cite: 12, 23]</td>
+            <td>Mandatory (100ms - 500ms) [cite: 12]</td>
+        </tr>
+        <tr>
+            <td><strong>Cryptography</strong></td>
+            <td>100% Symmetric (XChaCha20-Poly1305)</td>
+            <td>Asymmetric + Symmetric [cite: 12]</td>
+        </tr>
+        <tr>
+            <td><strong>Overhead</strong></td>
+            <td>Fixed <span class="badge-red">+32 bytes</span></td>
+            <td>Variable + Headers [cite: 12]</td>
+        </tr>
+    </table>
+
+    <h2>2. Cryptographic Architecture</h2>
+    <p>Every single packet is encrypted in a completely independent fashion with a dynamically generated unique nonce[cite: 24, 107, 109]. With no sessions dynamically negotiated, dropped packets will never break or hang the network conduit[cite: 108].</p>
+    
+    <div class="term-window" style="background-color: #e8f4f8; border-left: 5px solid #5bc0de; color: #333; padding: 15px; font-family: 'Segoe UI', sans-serif;">
+        <strong>Packet Format on the Network:</strong><br><br>
+        <code style="font-family: 'Courier New', monospace; background: #fff; padding: 5px; border-radius: 3px;">[ IP hdr ] [ L4 hdr ] <span style="color:#d9534f;">[ ENCRYPTED PAYLOAD + SEQ ] [ MAC:16B ] [ RNONCE:8B ]</span></code>
+    </div>
+
+    <ul>
+        <li><strong>Confidentiality:</strong> XChaCha20 (Content becomes physically indecipherable)[cite: 110].</li>
+        <li><strong>Integrity:</strong> Poly1305 MAC (16 bytes). Packets are instantly destroyed if the fingerprint is altered.</li>
+        <li><strong>Anti-Replay:</strong> 4096-packet sliding window hidden within the encrypted payload.</li>
+    </ul>
+
+    <h2>3. Main Menu</h2>
+    <p>Once the engine is initialized, the centralized control interface displays the real-time status of your physical interface, the kernel module, and the active routing matrix.</p>
+    
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body"><span class="c-cyan">╔══════════════════════════════════════════════════════╗
+║         <span class="c-bold">TRANS3 SMART IP ENCRYPTOR V3.0 (L3)</span>          ║
+╠══════════════════════════════════════════════════════╣
+║</span>  Active Interface      : <span class="c-bold">eth0</span> (MTU 1550)
+<span class="c-cyan">║</span>  Kernel Engine         : <span class="c-green">Operational [V]</span>
+<span class="c-cyan">║</span>  Active Target IPs     : <span class="c-yellow">1</span>
+<span class="c-cyan">╠══════════════════════════════════════════════════════╣
+║</span>  <span class="c-bold">ENCRYPTION MATRIX (POSTROUTING/PREROUTING):</span>
+<span class="c-cyan">║</span>  <span class="c-red">[🔒] Encrypting (Out) -></span> <span class="c-bold">192.168.1.50</span> (Mode e)
+<span class="c-cyan">║</span>  <span class="c-green">[🔓] Decrypting (In)  <-</span> <span class="c-bold">192.168.1.50</span> (Mode d)
+<span class="c-cyan">║</span>
+<span class="c-cyan">╠══════════════════════════════════════════════════════╣
+║</span>  <span class="c-bold">1.</span> Initialize kernel engine (Set MTU 1550)
+<span class="c-cyan">║</span>  <span class="c-bold">2.</span> Security Key Management
+<span class="c-cyan">║</span>  <span class="c-bold">3.</span> <span class="c-green">Add an encryption rule (Target IP)</span>
+<span class="c-cyan">║</span>  <span class="c-bold">4.</span> <span class="c-yellow">Real-time Encryption Telemetry</span>
+<span class="c-cyan">║</span>  <span class="c-bold">5.</span> <span class="c-magenta">Lock system configuration (ROM write)</span>
+<span class="c-cyan">║</span>  <span class="c-bold">6.</span> <span class="c-red">Purge matrix (Clear Text Mode)</span>
+<span class="c-cyan">║</span>  <span class="c-bold">7.</span> Exit
+<span class="c-cyan">╚══════════════════════════════════════════════════════╝</span>
+
+ <span class="c-bold">Command (1-7):</span> </div>
+    </div>
+
+    <h2>4. Menu Options Details</h2>
+    
+    <h3>Option 1: Initialize kernel engine</h3>
+    <p>Starts the encryption engine by loading the <code>xt_TRANS3</code> kernel module and adjusts the physical MTU to 1550 to absorb the encryption overhead.</p>
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body"><span class="c-yellow">[*] Analyzing system kernel...</span>
+<span class="c-green">[+] Engine started successfully. MTU adjusted to 1550.</span>
+
+<span class="c-cyan">Press Enter to continue...</span></div>
+    </div>
+
+    <h3>Option 2: Security Key Management</h3>
+    <p>Queries the local signature status or imports an external "Air-Gap" token to hermetically seal your private keys into the system memory[cite: 73, 74].</p>
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body"><span class="c-cyan">┌──────────────────────────────────────────┐
+│               KEY SECURITY               │
+└──────────────────────────────────────────┘</span>
+  a) Check local signature status
+  b) Import external token (Air-Gap USB)
+
+  Choice: a
+
+<span class="c-green">[+] Valid signature found.</span>
+
+<span class="c-cyan">Press Enter to continue...</span></div>
+    </div>
+
+    <h3>Option 3: Add an encryption rule</h3>
+    <p>The core of the protection. Provide the target IP: all protocols targeting this specific remote equipment will instantly undergo cryptographic encapsulation[cite: 77, 80].</p>
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body"><span class="c-cyan">┌──────────────────────────────────────────┐
+│         ADD L3 ENCRYPTION RULE           │
+└──────────────────────────────────────────┘</span>
+  Target IP to encrypt: 192.168.1.50
+<span class="c-green">[+] Rules added. Traffic to/from <span class="c-bold">192.168.1.50</span> is now encrypted (Layer 3).</span>
+
+<span class="c-cyan">Press Enter to continue...</span></div>
+    </div>
+
+    <h3>Option 4: Real-time Encryption Telemetry</h3>
+    <p>Provides a detailed real-time report regarding the actual utilization of secured traffic (Outbound encrypted flows and Inbound decrypted flows)[cite: 83].</p>
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body"><span class="c-cyan">╔══════════════════════════════════════════════════════╗
+║              ENCRYPTION TELEMETRY                    ║
+╚══════════════════════════════════════════════════════╝</span>
+
+<span class="c-yellow">[ OUTBOUND FLOWS (ENCRYPTING --mode e) ]</span>
+  <span class="c-red">[TX]</span> To: <span class="c-bold">192.168.1.50</span> | Proto: tcp | Encrypted: <span class="c-cyan">120 pkts</span> (15400)
+
+<span class="c-yellow">[ INBOUND FLOWS (DECRYPTING --mode d) ]</span>
+  <span class="c-green">[RX]</span> From: <span class="c-bold">192.168.1.50</span> | Proto: tcp | Decrypted: <span class="c-cyan">98 pkts</span> (10240)
+
+<span class="c-cyan">Press Enter to continue...</span></div>
+    </div>
+
+    <h3>Option 5: Lock system configuration</h3>
+    <p>Enables service resilience. The routing matrix housing your protected IP targets is stored persistently (ROM write)[cite: 93]. Following any reboot, all tunnels will be securely re-established[cite: 94].</p>
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body"><span class="c-yellow">[*] Writing to system ROM...</span>
+<span class="c-green">[+] Encryption rules permanently sealed.</span>
+
+<span class="c-cyan">Press Enter to continue...</span></div>
+    </div>
+
+    <h3>Option 6: Purge matrix</h3>
+    <p>The absolute kill switch. Meticulously destroys all encrypted IP links and instantaneously reverts the machine back to standard "clear text" network mode[cite: 97].</p>
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body"><span class="c-red">[*] Purging encryption rules...</span>
+<span class="c-green">[+] Network interface restored to Clear Text Mode (MTU 1500).</span>
+
+<span class="c-cyan">Press Enter to continue...</span></div>
+    </div>
+
+    <h3>Option 7: Exit</h3>
+    <p>Closes the command-line administration assistant. You can choose to leave the encryption engine fully engaged and performant in the background[cite: 101, 104].</p>
+    <div class="term-window">
+        <div class="term-header">
+            <div class="term-button btn-close"></div><div class="term-button btn-min"></div><div class="term-button btn-max"></div>
+        </div>
+        <div class="term-body">
+<span class="c-yellow">[?] Shutdown sequence:</span>
+  Keep encryption active in background? (Y/n): Y
+<span class="c-green">  > Encryption active in background.</span>
+<span class="c-cyan">  Terminal disconnected.</span></div>
+    </div>
+
+</body>
+</html>
