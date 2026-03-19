@@ -12,10 +12,10 @@ fi
 echo "[*] Updating package lists..."
 apt-get update -q
 
-# 1. Liste des paquets (sans parenthèses, compatible sh/dash)
+# 1. Required packages (no parentheses for sh/dash compatibility)
 REQUIRED_PACKAGES="build-essential meson ninja-build linux-headers-$(uname -r) pkg-config libxtables-dev iptables iptables-persistent iproute2 ethtool ebtables bridge-utils netcat-openbsd tcpdump tshark iperf3 python3 shc binutils git"
 
-# 2. Vérification des paquets manquants
+# 2. Check for missing packages
 MISSING_PACKAGES=""
 for pkg in $REQUIRED_PACKAGES; do
     if ! dpkg -s "$pkg" >/dev/null 2>&1; then
@@ -23,7 +23,7 @@ for pkg in $REQUIRED_PACKAGES; do
     fi
 done
 
-# 3. Installation uniquement si nécessaire
+# 3. Install only missing packages
 if [ -n "$MISSING_PACKAGES" ]; then
     echo "[*] Installing missing packages:$MISSING_PACKAGES"
     DEBIAN_FRONTEND=noninteractive apt-get install -y $MISSING_PACKAGES

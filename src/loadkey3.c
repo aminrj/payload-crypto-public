@@ -15,8 +15,9 @@
 #include <leancrypto/lc_chacha20_poly1305.h>
 #include <leancrypto/lc_memset_secure.h>
 
-#define HIDDEN_DIR     "/etc/.file"
-#define HIDDEN_KEYFILE "/etc/.file/file3"
+#include "libxt_TRANS3.h"
+
+#define KEYSTORE_DIR   "/etc/.file"
 #define RAW_KEY_SIZE   64
 #define FILE_SIZE      136
 
@@ -48,7 +49,7 @@ static int get_machine_key(uint8_t master_key[32])
     return 0;
 }
 
-/* Remplir un buffer avec des octets aléatoires via getrandom() (sécurisé) */
+/* Fill a buffer with cryptographically secure random bytes via getrandom() */
 static int get_random_bytes_secure(void *buf, size_t len)
 {
     size_t offset = 0;
@@ -72,7 +73,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    /* Lire la clé brute depuis le fichier source */
+    /* Read the raw key from the provided source file */
     FILE *fin = fopen(argv[1], "rb");
     if (!fin) {
         fprintf(stderr, "[-] Key source not found: %s\n", argv[1]);
@@ -88,7 +89,7 @@ int main(int argc, char *argv[])
     }
     fclose(fin);
 
-    /* Obtenir la clé maîtresse liée à la machine */
+    /* Derive the machine-bound master key */
     uint8_t master_key[32];
     if (get_machine_key(master_key) != 0) {
         lc_memset_secure(raw_key, 0, RAW_KEY_SIZE);
@@ -103,7 +104,7 @@ int main(int argc, char *argv[])
     uint8_t *mac        = final_buffer + 104;  /* [104..119]*/
     uint8_t *suffix     = final_buffer + 120;  /* [120..135]*/
 
-    /* Générer les parties aléatoires avec getrandom() */
+    /* Generate random fields using getrandom() */
     if (get_random_bytes_secure(prefix, 16) != 0 ||
         get_random_bytes_secure(nonce,  24) != 0 ||
         get_random_bytes_secure(suffix, 16) != 0) {
@@ -113,7 +114,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    /* Scellement avec ChaCha20-Poly1305 */
+    /* Seal raw_key with ChaCha20-Poly1305 under the machine-bound master key */
     LC_CHACHA20_POLY1305_CTX_ON_STACK(ctx);
     lc_aead_setkey(ctx, master_key, 32, nonce, 12);  /* nonce[0..11] = IV */
     lc_aead_encrypt(ctx, raw_key, ciphertext, RAW_KEY_SIZE,
@@ -121,25 +122,25 @@ int main(int argc, char *argv[])
     lc_aead_zero(ctx);
     lc_memset_secure(master_key, 0, 32);
 
-    /* Créer le répertoire caché s'il n'existe pas */
+    /* Create the keystore directory if it does not exist */
     struct stat st;
-    if (stat(HIDDEN_DIR, &st) == -1) {
-        if (mkdir(HIDDEN_DIR, 0700) != 0) {
+    if (stat(KEYSTORE_DIR, &st) == -1) {
+        if (mkdir(KEYSTORE_DIR, 0700) != 0) {
             lc_memset_secure(raw_key, 0, RAW_KEY_SIZE);
-            fprintf(stderr, "[-] Cannot create directory %s\n", HIDDEN_DIR);
+            fprintf(stderr, "[-] Cannot create directory %s\n", KEYSTORE_DIR);
             return EXIT_FAILURE;
         }
     }
 
-    /* Écrire le fichier scellé */
-    FILE *fout = fopen(HIDDEN_KEYFILE, "wb");
+    /* Write the sealed key file */
+    FILE *fout = fopen(KEYFILE_PATH, "wb");
     if (!fout) {
         lc_memset_secure(raw_key, 0, RAW_KEY_SIZE);
         fprintf(stderr, "[-] Cannot write key storage\n");
         return EXIT_FAILURE;
     }
 
-    /* Permissions strictes : propriétaire seul en lecture/écriture */
+    /* Restrict permissions: owner read/write only */
     if (fchmod(fileno(fout), S_IRUSR | S_IWUSR) != 0) {
         fclose(fout);
         lc_memset_secure(raw_key, 0, RAW_KEY_SIZE);
@@ -156,6 +157,6 @@ int main(int argc, char *argv[])
     fclose(fout);
 
     lc_memset_secure(raw_key, 0, RAW_KEY_SIZE);
-    printf("[+] Key sealed and locked at %s\n", HIDDEN_KEYFILE);
+    printf("[+] Key sealed and locked at %s\n", KEYFILE_PATH);
     return EXIT_SUCCESS;
 }

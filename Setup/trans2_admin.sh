@@ -6,14 +6,12 @@
 RED='\e[1;31m'; GREEN='\e[1;32m'; YELLOW='\e[1;33m'; CYAN='\e[1;36m'
 WHITE='\e[1;37m'; MAGENTA='\e[1;35m'; BOLD='\e[1m'; NC='\e[0m'
 
-exec 2>/dev/null
-
 if [ "$EUID" -ne 0 ]; then
     echo -e "${RED}[-] Access denied: Root privileges required (sudo trans3).${NC}"
     exit 1
 fi
 
-# Détection de l'interface physique
+# Detect the primary physical network interface
 PHYS_IF=$(ip route get 8.8.8.8 | awk -F"dev " 'NR==1{split($2,a," ");print a[1]}' || echo "eth0")
 [ -z "$PHYS_IF" ] && PHYS_IF="eth0"
 
@@ -22,13 +20,13 @@ init_network() {
     modprobe nf_defrag_ipv4 >/dev/null 2>&1 || true
     modprobe xt_TRANS3 >/dev/null 2>&1 || true
 
-    # Désactivation des offloads matériels
+    # Disable hardware offloads — required for correct in-kernel AEAD operation
     ethtool -K "$PHYS_IF" tx off rx off tso off gso off gro off ufo off lro off tx-checksum-ip-generic off rx-checksum off >/dev/null 2>&1 || true
-    
-    # Augmentation du MTU physique pour absorber le +32B de TRANS3
+
+    # Increase physical MTU to absorb the +32-byte TRANS3 overhead
     ip link set dev "$PHYS_IF" mtu 1550 >/dev/null 2>&1 || true
 
-    # TCP MSS Clamping global pour forcer les paquets à 1428 octets de payload (L3 Forward & Local)
+    # TCP MSS clamping: force payloads to 1428 bytes (L3 forward & local)
     iptables-legacy -t mangle -A POSTROUTING -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1428 >/dev/null 2>&1 || true
 }
 
@@ -37,7 +35,7 @@ teardown() {
     iptables-legacy -t mangle -F PREROUTING >/dev/null 2>&1 || true
     iptables-legacy -t mangle -F >/dev/null 2>&1 || true
     
-    # Restauration interface
+    # Restore interface
     ip link set dev "$PHYS_IF" mtu 1500 >/dev/null 2>&1 || true
     ethtool -K "$PHYS_IF" tx on rx on tso on gso on gro on >/dev/null 2>&1 || true
     
@@ -62,7 +60,7 @@ print_menu() {
     local MOD_STATUS="${RED}Offline [X]${NC}"
     if lsmod | grep -q "xt_TRANS3"; then MOD_STATUS="${GREEN}Operational [V]${NC}"; fi
     
-    local ACTIVE_RULES=$(iptables-legacy -t mangle -S POSTROUTING 2>/dev/null | grep "TRANS3 --mode e" | grep -oP -- '-d \K[0-9\.]+' | sort -u | wc -l)
+    local ACTIVE_RULES=$(iptables-legacy -t mangle -S POSTROUTING 2>/dev/null | grep "TRANS3 --mode e" | grep -oE -- '-d [0-9.]+' | awk '{print $2}' | sort -u | wc -l)
     [ -z "$ACTIVE_RULES" ] && ACTIVE_RULES=0
 
     echo -e "${CYAN}╔══════════════════════════════════════════════════════╗${NC}"
@@ -77,7 +75,7 @@ print_menu() {
     if [ "$ACTIVE_RULES" -eq 0 ]; then
         echo -e "${CYAN}║${NC}  ${YELLOW}> Standard traffic (No encryption rules)${NC}"
     else
-        iptables-legacy -t mangle -S POSTROUTING 2>/dev/null | grep "TRANS3 --mode e" | grep -oP -- '-d \K[0-9\.]+' | sort -u | while read -r ip; do
+        iptables-legacy -t mangle -S POSTROUTING 2>/dev/null | grep "TRANS3 --mode e" | grep -oE -- '-d [0-9.]+' | awk '{print $2}' | sort -u | while read -r ip; do
             if [ -n "$ip" ]; then 
                 echo -e "${CYAN}║${NC}  ${RED}[🔒] Encrypting (Out) ->${NC} ${BOLD}$ip${NC} (Mode e)"
                 echo -e "${CYAN}║${NC}  ${GREEN}[🔓] Decrypting (In)  <-${NC} ${BOLD}$ip${NC} (Mode d)"
@@ -151,9 +149,9 @@ while true; do
             
             if [[ -n "$PEER_IP" ]]; then
                 for proto in tcp udp icmp igmp gre; do
-                    # Chiffrement In-Place sortant (+32 bytes)
+                    # Outbound in-place encryption (+32 bytes)
                     iptables-legacy -t mangle -A POSTROUTING -d "$PEER_IP" -p $proto -j TRANS3 --mode e >/dev/null 2>&1
-                    # Déchiffrement In-Place entrant (-32 bytes)
+                    # Inbound in-place decryption (-32 bytes)
                     iptables-legacy -t mangle -A PREROUTING -s "$PEER_IP" -p $proto -j TRANS3 --mode d >/dev/null 2>&1
                 done
                 echo -e "${GREEN}[+] Rules added. Traffic to/from ${BOLD}$PEER_IP${NC}${GREEN} is now encrypted (Layer 3).${NC}"

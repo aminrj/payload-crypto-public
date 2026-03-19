@@ -375,11 +375,7 @@ static __always_inline unsigned int handle_encrypt(struct sk_buff *skb,
         nonce,
         info->key);
 
-    /* Write RNONCE in clear after the MAC — no memcpy needed, direct write */
-    put_unaligned_le64(get_unaligned_le64(rnonce),
-                       skb->data + offset + payload_len + SEQ_SIZE + MAC_SIZE);
-    /* Note: the above works for 8-byte aligned writes.
-     * For safety, use the explicit form: */
+    /* Write RNONCE in clear after the MAC */
     memcpy(skb->data + offset + payload_len + SEQ_SIZE + MAC_SIZE,
            rnonce, RNONCE_SIZE);
 

@@ -9,10 +9,10 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Détection intelligente du dossier racine (xt_TRANS3)
+# Detect project root (handles invocation from Setup/ subdirectory)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ "$SCRIPT_DIR" == *"Setup"* ]]; then
-    PROJECT_DIR="$(dirname "$SCRIPT_DIR")" # Remonte d'un cran si on est dans Setup/
+    PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 else
     PROJECT_DIR="$SCRIPT_DIR"
 fi

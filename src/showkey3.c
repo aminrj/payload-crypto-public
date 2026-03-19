@@ -9,7 +9,8 @@
 #include <leancrypto/lc_chacha20_poly1305.h>
 #include <leancrypto/lc_memset_secure.h>
 
-#define HIDDEN_KEYFILE "/etc/.file/file3"
+#include "libxt_TRANS3.h"
+
 #define RAW_KEY_SIZE   64
 #define FILE_SIZE      136
 
@@ -46,9 +47,9 @@ int main(void)
     uint8_t raw_key[RAW_KEY_SIZE];
     int     ret;
 
-    FILE *f = fopen(HIDDEN_KEYFILE, "rb");
+    FILE *f = fopen(KEYFILE_PATH, "rb");
     if (!f) {
-        fprintf(stderr, "[-] Key storage not found: %s\n", HIDDEN_KEYFILE);
+        fprintf(stderr, "[-] Key storage not found: %s\n", KEYFILE_PATH);
         return EXIT_FAILURE;
     }
     if (fread(buffer, 1, FILE_SIZE, f) != FILE_SIZE) {
@@ -82,10 +83,8 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    printf("[+] Active key :\n");
-
-    for (int i = 0;  i < 64; i++) printf("%02x", raw_key[i]);
-    
+    printf("[+] Active key:\n");
+    for (int i = 0; i < 64; i++) printf("%02x", raw_key[i]);
     printf("\n");
 
     lc_memset_secure(raw_key, 0, RAW_KEY_SIZE);
