@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# setup_bridge_sim.sh — Simulation 100% Réaliste (Hôtes inaccessibles)
+# setup_bridge_sim.sh — Realistic virtual lab for xt_TRANS3
 #
 # Topology:
 #  [ns_host_a]──veth-a0──[ns_bridge1]──veth-b1──[ns_bridge2]──veth-c1──[ns_host_b]
@@ -48,10 +48,10 @@ set_queuelen() {
 
 print_help() {
     echo -e "\n${BOLD}${CYAN}══════════════════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${BOLD}                     TOPOLOGIE DU LABORATOIRE TRANS3                          ${NC}"
+    echo -e "${BOLD}                          TRANS3 LAB TOPOLOGY                                 ${NC}"
     echo -e "${BOLD}${CYAN}══════════════════════════════════════════════════════════════════════════════${NC}\n"
-    
-    echo -e " ${GREEN}[ HOST A (Client) ]${NC}                                              ${GREEN}[ HOST B (Serveur) ]${NC}"
+
+    echo -e " ${GREEN}[ HOST A (Client) ]${NC}                                              ${GREEN}[ HOST B (Server) ]${NC}"
     echo -e "   IP: $IP_A                                                     IP: $IP_B"
     echo -e "   MTU: 1500 (Standard)                                             MTU: 1500 (Standard)"
     echo -e "       │                                                                │"
@@ -59,26 +59,26 @@ print_help() {
     echo -e "       │                                                                │"
     echo -e "   ($VETH_A1)                                                        ($VETH_C0)"
     echo -e " ${YELLOW}┌─────┴─────┐${NC}                                                    ${YELLOW}┌─────┴─────┐${NC}"
-    echo -e " ${YELLOW}│ BRIDGE 1  │${NC}             ${MAGENTA}[ CÂBLE WAN / INTERNET ]${NC}               ${YELLOW}│ BRIDGE 2  │${NC}"
-    echo -e " ${YELLOW}│(Chiffreur)├─${NC}($VETH_B0)──${MAGENTA}< TRAFIC 100% CHIFFRÉ >${NC}──($VETH_B1)─${YELLOW}┤(Déchiffreur)│${NC}"
-    echo -e " ${YELLOW}│ MTU: 1550 │${NC}              MTU: 1550 (Baby Jumbo Frames)               ${YELLOW}│ MTU: 1550 │${NC}"
+    echo -e " ${YELLOW}│ BRIDGE 1  │${NC}                ${MAGENTA}[ WAN / INTERNET ]${NC}                  ${YELLOW}│ BRIDGE 2  │${NC}"
+    echo -e " ${YELLOW}│(Encryptor)├─${NC}($VETH_B0)──${MAGENTA}< FULLY ENCRYPTED TRAFFIC >${NC}──($VETH_B1)─${YELLOW}┤(Decryptor)│${NC}"
+    echo -e " ${YELLOW}│ MTU: 1550 │${NC}                MTU: 1550 (Baby Jumbo Frames)              ${YELLOW}│ MTU: 1550 │${NC}"
     echo -e " ${YELLOW}└───────────┘${NC}                                                    ${YELLOW}└───────────┘${NC}\n"
 
-    echo -e "${BOLD}🛠️  COMMANDES UTILES POUR TESTER L'ARCHITECTURE :${NC}\n"
-    
-    echo -e "  ${BOLD}1. Tester le Ping (de A vers B) :${NC}"
+    echo -e "${BOLD}USEFUL TEST COMMANDS:${NC}\n"
+
+    echo -e "  ${BOLD}1. Ping test (A to B):${NC}"
     echo -e "     sudo ip netns exec $NS_A ping $IP_B\n"
 
-    echo -e "  ${BOLD}2. Lancer le Serveur de test (sur l'Hôte B) :${NC}"
+    echo -e "  ${BOLD}2. Start iperf3 server (on Host B):${NC}"
     echo -e "     sudo ip netns exec $NS_B iperf3 -s -p 7777\n"
 
-    echo -e "  ${BOLD}3. Lancer le Client de test (Depuis l'Hôte A) :${NC}"
+    echo -e "  ${BOLD}3. Run iperf3 client (from Host A):${NC}"
     echo -e "     sudo ip netns exec $NS_A iperf3 -c $IP_B -p 7777 -P 4\n"
 
-    echo -e "  ${BOLD}4. 🕵️  Écouter le trafic chiffré comme un Hacker (Sur le WAN) :${NC}"
+    echo -e "  ${BOLD}4. Capture encrypted WAN traffic (packet sniffer view):${NC}"
     echo -e "     sudo ip netns exec $NS_B1 tcpdump -i $VETH_B0 -n -XX tcp port 7777\n"
 
-    echo -e "  ${BOLD}5. 🧹 Détruire la simulation :${NC}"
+    echo -e "  ${BOLD}5. Tear down the simulation:${NC}"
     echo -e "     sudo $0 --clean\n"
     echo -e "${BOLD}${CYAN}══════════════════════════════════════════════════════════════════════════════${NC}\n"
 }
@@ -93,7 +93,7 @@ teardown() {
 
 setup() {
     [[ $EUID -ne 0 ]] && err "Root required: sudo $0"
-    
+
     info "Loading kernel modules"
     modprobe nf_conntrack    2>/dev/null || true
     modprobe nf_defrag_ipv4  2>/dev/null || true
@@ -114,7 +114,7 @@ setup() {
     ip link set "$VETH_C0" netns "$NS_B2"; ip link set "$VETH_C1" netns "$NS_B"
 
     # =========================================================================
-    # ── ZONE UTILISATEURS (Standard) ──
+    # ── HOST ZONE (Standard MTU) ──
     # =========================================================================
     info "Configuring HOST_A ($IP_A) — MTU 1500"
     ip netns exec "$NS_A" ip addr add "${IP_A}${PREFIX}" dev "$VETH_A0"
@@ -131,7 +131,7 @@ setup() {
     set_queuelen "$NS_B" "$VETH_C1"; disable_offloads "$NS_B" "$VETH_C1"; enable_rps "$NS_B" "$VETH_C1"
 
     # =========================================================================
-    # ── ZONE ROUTEURS CRYPTOGRAPHIQUES (Baby Jumbo Frames) ──
+    # ── CRYPTOGRAPHIC BRIDGE ZONE (Baby Jumbo Frames) ──
     # =========================================================================
     info "Configuring BRIDGE1 (Encryptor) — MTU 1550"
     ip netns exec "$NS_B1" ip link set "$VETH_A1" up

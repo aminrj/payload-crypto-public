@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
-# deploy_physical_bridge.sh — Déploiement "Bump-in-the-wire" avec xt_TRANS3
+# deploy_physical_bridge.sh — Bump-in-the-wire deployment with xt_TRANS3
 #
-# Ce script configure la machine physique comme un pont invisible L2.
-# Aucun service persistant n'est installé. Configuration perdue au reboot.
+# Configures this machine as an invisible L2 transparent bridge.
+# No persistent services are installed. Configuration is lost on reboot.
 # =============================================================================
 set -euo pipefail
 
@@ -17,16 +17,16 @@ warn() { echo -e "${YELLOW}[!]${NC} $*"; }
 [[ $EUID -ne 0 ]] && { echo -e "${RED}[-] Root required: sudo $0${NC}"; exit 1; }
 
 # =============================================================================
-# 🛠️ CONFIGURATION UTILISATEUR (À MODIFIER SELON VOTRE MATÉRIEL)
+# USER CONFIGURATION (edit to match your hardware)
 # =============================================================================
-LAN_IF="eth_lan"             # Remplacer par le vrai nom (ex: enp3s0)
-WAN_IF="eth_wan"             # Remplacer par le vrai nom (ex: enp4s0)
-TARGET_IP="203.0.113.50"     # L'adresse IP du serveur lointain à chiffrer
+LAN_IF="eth_lan"             # Replace with actual interface name (e.g. enp3s0)
+WAN_IF="eth_wan"             # Replace with actual interface name (e.g. enp4s0)
+TARGET_IP="203.0.113.50"     # Remote IP address to encrypt traffic toward
 
 BRIDGE_IF="br0"
 
-# (Optionnel) Si vous administrez ce serveur en SSH depuis le LAN, décommentez
-# et renseignez l'IP pour que le script la transfère sur le bridge.
+# (Optional) If you manage this host via SSH from the LAN, uncomment and set
+# the IP to transfer it onto the bridge interface to avoid losing connectivity.
 # MANAGEMENT_IP="192.168.1.254/24"
 # MANAGEMENT_GW="192.168.1.1"
 
@@ -37,17 +37,17 @@ command -v iptables-legacy &>/dev/null && IPT="iptables-legacy"
 
 disable_offloads() {
     local IF=$1
-    log "Désactivation des offloads matériels sur $IF"
+    log "Disabling hardware offloads on $IF"
     ethtool -K "$IF" tx off gso off tso off gro off lro off ufo off rx-gro-hw off \
                      tx-checksum-ip-generic off 2>/dev/null || true
 }
 
 cleanup() {
-    info "Nettoyage de l'ancienne configuration..."
+    info "Removing previous configuration"
     $IPT -t mangle -D FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1428 2>/dev/null || true
     $IPT -t mangle -D FORWARD -m physdev --physdev-out "$WAN_IF" -d "$TARGET_IP" -j TRANS3 --mode e 2>/dev/null || true
     $IPT -t mangle -D FORWARD -m physdev --physdev-in  "$WAN_IF" -s "$TARGET_IP" -j TRANS3 --mode d 2>/dev/null || true
-    
+
     if ip link show "$BRIDGE_IF" &>/dev/null; then
         ip link set "$LAN_IF" nomaster 2>/dev/null || true
         ip link set "$WAN_IF" nomaster 2>/dev/null || true
@@ -56,62 +56,62 @@ cleanup() {
 }
 
 setup() {
-    info "Chargement des modules noyau"
-    modprobe br_netfilter || warn "br_netfilter non disponible"
-    modprobe xt_TRANS3 || { echo -e "${RED}[-] xt_TRANS3 n'est pas installé sur ce serveur !${NC}"; exit 1; }
+    info "Loading kernel modules"
+    modprobe br_netfilter || warn "br_netfilter not available"
+    modprobe xt_TRANS3 || { echo -e "${RED}[-] xt_TRANS3 is not installed on this host!${NC}"; exit 1; }
 
     sysctl -w net.bridge.bridge-nf-call-iptables=1 >/dev/null
     sysctl -w net.bridge.bridge-nf-call-ip6tables=1 >/dev/null
 
-    info "Configuration des interfaces physiques"
+    info "Configuring physical interfaces"
     ip link set "$LAN_IF" up
     ip link set "$WAN_IF" up
-    
+
     disable_offloads "$LAN_IF"
     disable_offloads "$WAN_IF"
 
-    info "Création du Bridge Transparent ($BRIDGE_IF)"
+    info "Creating transparent bridge ($BRIDGE_IF)"
     ip link add "$BRIDGE_IF" type bridge
     ip link set "$LAN_IF" master "$BRIDGE_IF"
     ip link set "$WAN_IF" master "$BRIDGE_IF"
 
-    info "Application de la stratégie MTU (TRANS3 +32B Overhead)"
-    ip link set "$LAN_IF" mtu 1468    # Force le LAN à envoyer de plus petits paquets
-    ip link set "$WAN_IF" mtu 1500    # Le WAN reste standard pour absorber le chiffrement
+    info "Applying MTU policy (TRANS3 +32-byte overhead)"
+    ip link set "$LAN_IF" mtu 1468    # LAN: reduced to leave room for encryption overhead
+    ip link set "$WAN_IF" mtu 1500    # WAN: standard 1500 absorbs the encrypted packet
     ip link set "$BRIDGE_IF" up
     ip link set "$BRIDGE_IF" mtu 1500
 
-    # Option de Management (Évite la coupure SSH)
+    # Management IP option (prevents SSH disconnection)
     if [[ -n "${MANAGEMENT_IP:-}" ]]; then
-        info "Transfert de l'IP de Management sur le Bridge"
+        info "Transferring management IP to bridge interface"
         ip addr flush dev "$LAN_IF" 2>/dev/null || true
         ip addr add "$MANAGEMENT_IP" dev "$BRIDGE_IF"
         [[ -n "${MANAGEMENT_GW:-}" ]] && ip route add default via "$MANAGEMENT_GW" 2>/dev/null || true
     fi
 
-    info "Configuration Iptables (Mangle)"
-    log "1. TCP MSS Clamping (1428 octets)"
+    info "Configuring iptables mangle rules"
+    log "1. TCP MSS clamping (1428 bytes)"
     $IPT -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1428
 
-    log "2. Règle de Chiffrement (LAN -> WAN vers $TARGET_IP)"
+    log "2. Encryption rule (LAN -> WAN toward $TARGET_IP)"
     $IPT -t mangle -A FORWARD -m physdev --physdev-out "$WAN_IF" -d "$TARGET_IP" -j TRANS3 --mode e
 
-    log "3. Règle de Déchiffrement (WAN -> LAN depuis $TARGET_IP)"
+    log "3. Decryption rule (WAN -> LAN from $TARGET_IP)"
     $IPT -t mangle -A FORWARD -m physdev --physdev-in  "$WAN_IF" -s "$TARGET_IP" -j TRANS3 --mode d
 
     echo -e "\n${BOLD}═══════════════════════════════════════════════════════════════${NC}"
-    echo -e "${BOLD}  Routeur Physique TRANS3 Activé !${NC}"
+    echo -e "${BOLD}  TRANS3 Physical Bridge Active!${NC}"
     echo -e "${BOLD}═══════════════════════════════════════════════════════════════${NC}"
-    echo -e "  Mode      : Transparent / Bridge L2"
+    echo -e "  Mode      : Transparent / L2 Bridge"
     echo -e "  LAN Port  : $LAN_IF (MTU 1468)"
     echo -e "  WAN Port  : $WAN_IF (MTU 1500)"
-    echo -e "  Cible IP  : $TARGET_IP"
-    echo -e "  État      : Le trafic vers la cible est chiffré à la volée."
+    echo -e "  Target IP : $TARGET_IP"
+    echo -e "  Status    : Traffic toward target is encrypted on-the-fly."
     echo -e "${BOLD}═══════════════════════════════════════════════════════════════${NC}"
 }
 
 cleanup
 case "${1:-setup}" in
-    --clean|-c) log "Nettoyage terminé. Le bridge a été retiré." ;;
+    --clean|-c) log "Cleanup complete. Bridge removed." ;;
     setup|*)    setup ;;
 esac
